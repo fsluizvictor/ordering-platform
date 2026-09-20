@@ -5,7 +5,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from flask import Flask, jsonify
-from sqlalchemy import create_engine, text
 
 from shared.correlation import init_correlation
 from shared.errors import error_response
@@ -17,6 +16,8 @@ ReadyCheck = Callable[[], tuple[bool, str]]
 
 def check_postgres(database_url: str) -> tuple[bool, str]:
     try:
+        from sqlalchemy import create_engine, text
+
         engine = create_engine(database_url, pool_pre_ping=True)
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))

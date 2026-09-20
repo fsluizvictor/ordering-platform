@@ -29,6 +29,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 DEFAULT_BASE_URL = "http://localhost:8000"
+API_PREFIX = "/api/v1"
 
 CUSTOMERS = [
     {
@@ -209,14 +210,14 @@ def seed_customers(base: str) -> list[dict[str, Any]]:
     print("\n📋 Criando clientes...")
     created = []
     for c in CUSTOMERS:
-        status, body = post(f"{base}/customers", c)
+        status, body = post(f"{base}{API_PREFIX}/customers", c)
         if status == 201:
             cid = body.get("id", "?")
             print(f"  ✅ {c['name']} → id={cid}")
             created.append(body)
         elif status == 409:
             print(f"  ⚠️  {c['name']} já existe (email duplicado) — buscando...")
-            s2, b2 = get(f"{base}/customers/name/{c['name'].replace(' ', '%20')}")
+            s2, b2 = get(f"{base}{API_PREFIX}/customers/name/{c['name'].replace(' ', '%20')}")
             if s2 == 200:
                 created.append(b2)
                 print(f"     → id={b2.get('id', '?')}")
@@ -231,14 +232,14 @@ def seed_products(base: str) -> list[dict[str, Any]]:
     print("\n📦 Criando produtos...")
     created = []
     for p in PRODUCTS:
-        status, body = post(f"{base}/products", p)
+        status, body = post(f"{base}{API_PREFIX}/products", p)
         if status == 201:
             pid = body.get("id", "?")
             print(f"  ✅ {p['name']} (R$ {p['price']}, estoque: {p['stock']}) → id={pid}")
             created.append(body)
         elif status == 409:
             print(f"  ⚠️  {p['name']} já existe — buscando...")
-            s2, b2 = get(f"{base}/products/name/{p['name'].replace(' ', '%20')}")
+            s2, b2 = get(f"{base}{API_PREFIX}/products/name/{p['name'].replace(' ', '%20')}")
             if s2 == 200:
                 created.append(b2)
                 print(f"     → id={b2.get('id', '?')}")
@@ -289,7 +290,7 @@ def seed_orders(
         payload = {"customer_id": customer_id, "items": items}
         headers = {"Idempotency-Key": idempotency_key}
 
-        status, body = post(f"{base}/orders", payload, headers=headers)
+        status, body = post(f"{base}{API_PREFIX}/orders", payload, headers=headers)
         if status == 202:
             ext_id = body.get("external_id", "?")
             print(
@@ -310,12 +311,12 @@ def print_summary(base: str) -> None:
         ("products", "Produtos"),
         ("orders", "Pedidos"),
     ]:
-        s, b = get(f"{base}/{resource}/count")
+        s, b = get(f"{base}{API_PREFIX}/{resource}/count")
         count = b.get("count", "?") if s == 200 else f"erro {s}"
         print(f"  {label}: {count}")
 
     print("\n🔍 Pedidos criados:")
-    s, body = get(f"{base}/orders")
+    s, body = get(f"{base}{API_PREFIX}/orders")
     if s == 200:
         orders = body if isinstance(body, list) else body.get("orders", [])
         for order in orders:
@@ -360,9 +361,9 @@ def main() -> None:
     print("\n✅ Seed concluído! A plataforma está pronta para testes.\n")
     print("Dicas:")
     print(f"  • Swagger UI:  {base}/docs")
-    print(f"  • Listar clientes: GET {base}/customers")
-    print(f"  • Listar produtos:  GET {base}/products")
-    print(f"  • Listar pedidos:   GET {base}/orders")
+    print(f"  • Listar clientes: GET {base}{API_PREFIX}/customers")
+    print(f"  • Listar produtos:  GET {base}{API_PREFIX}/products")
+    print(f"  • Listar pedidos:   GET {base}{API_PREFIX}/orders")
     print()
 
 
