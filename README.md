@@ -2,7 +2,11 @@
 
 Plataforma distribuída para gerenciamento de clientes, produtos e pedidos. Implementada como exercício de arquitetura de software com foco em microsserviços, processamento assíncrono e boas práticas de design.
 
+![Diagrama de Arquitetura](ordering-platform-simple-diagram.drawio.png)
+
 ---
+
+
 
 ## 🏗️ Arquitetura
 
