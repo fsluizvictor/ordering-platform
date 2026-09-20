@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from shared.logging_setup import setup_logging
+
 from customer_service.adapters.inbound.http.app import create_app
 from customer_service.config.settings import SERVICE_NAME, log_level, port
-from shared.logging_setup import setup_logging
 
 setup_logging(SERVICE_NAME, log_level())
 app = create_app()

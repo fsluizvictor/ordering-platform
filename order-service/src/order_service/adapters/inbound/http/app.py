@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from flask import Flask
+from shared.http import check_postgres, create_service_app
 
 from order_service.config.settings import SERVICE_NAME, database_url
-from shared.http import check_postgres, create_service_app
 
 
 def create_app() -> Flask:
