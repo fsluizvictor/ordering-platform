@@ -38,7 +38,9 @@ class SQLAlchemyOrderRepository(OrderRepository):
 
     def find_all(self) -> list[Order]:
         stmt = select(OrderModel)
-        return [_to_entity(m) for m in self._session.scalars(stmt).all()]
+        # .unique() is required when the model has a joined-load relationship
+        # (lazy="joined") because the JOIN produces duplicate rows per item.
+        return [_to_entity(m) for m in self._session.scalars(stmt).unique().all()]
 
     def update(self, order: Order) -> Order:
         model = self._session.get(OrderModel, order.id)
