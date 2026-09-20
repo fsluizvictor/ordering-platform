@@ -274,7 +274,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  # ── Orders (Phase 5 placeholder) ─────────────────────────────────────────
+  # ── Orders ───────────────────────────────────────────────────────────────
 
   /orders:
     post:

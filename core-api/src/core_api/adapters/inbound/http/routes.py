@@ -3,11 +3,11 @@ from __future__ import annotations
 import os
 
 from flask import Blueprint, Response, send_file
-from shared.errors import error_response
 
 from core_api.adapters.inbound.http.proxy import forward
 from core_api.config.settings import (
     customer_service_url,
+    order_service_url,
     product_service_url,
     proxy_timeout,
 )
@@ -101,12 +101,19 @@ def product_by_id(product_id: str) -> tuple[Response, int]:
     return forward(f"{product_service_url()}/products/{product_id}", proxy_timeout())
 
 
-# ── Orders (placeholder — wired in Phase 5) ───────────────────────────────
+# ── Orders ────────────────────────────────────────────────────────────────
 
 
 @api_bp.route("/api/v1/orders", methods=["GET", "POST"])
+def orders() -> tuple[Response, int]:
+    return forward(f"{order_service_url()}/orders", proxy_timeout())
+
+
 @api_bp.route("/api/v1/orders/count", methods=["GET"])
+def orders_count() -> tuple[Response, int]:
+    return forward(f"{order_service_url()}/orders/count", proxy_timeout())
+
+
 @api_bp.route("/api/v1/orders/<path:rest>", methods=["GET", "PUT", "DELETE"])
-def orders_placeholder(**_kwargs: object) -> tuple[Response, int]:
-    """Forwards to Order Service. Wired in Phase 5."""
-    return error_response("SERVICE_UNAVAILABLE", "Order service not yet available", 503)
+def order_by_external_id(rest: str) -> tuple[Response, int]:
+    return forward(f"{order_service_url()}/orders/{rest}", proxy_timeout())
