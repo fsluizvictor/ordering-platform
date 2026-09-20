@@ -161,6 +161,16 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks:
       - ordering_network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import socket; s=socket.create_connection(('rabbitmq', 5672), timeout=5); s.close()\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy

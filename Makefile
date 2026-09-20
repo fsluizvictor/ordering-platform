@@ -1,7 +1,7 @@
 .PHONY: lint format typecheck test install seed seed-sql
 
 install:
-	python -m pip install -r requirements-dev.txt
+	python3 -m pip install -r requirements-dev.txt
 
 lint:
 	ruff check .
@@ -21,7 +21,7 @@ test:
 
 ## seed: Popula o banco via Core API (requer containers rodando)
 seed:
-	python scripts/seed.py
+	python3 scripts/seed.py
 
 ## seed-sql: Popula o banco diretamente via SQL no container PostgreSQL (fallback)
 seed-sql:

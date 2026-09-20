@@ -61,7 +61,9 @@ CUSTOMERS = [
 PRODUCTS = [
     {
         "name": "Notebook Pro 15",
-        "description": "Laptop profissional com processador de última geração, 16GB RAM e SSD 512GB.",
+        "description": (
+            "Laptop profissional com processador de última geração, 16GB RAM e SSD 512GB."
+        ),
         "price": "4599.90",
         "stock": 25,
     },
@@ -78,14 +80,16 @@ PRODUCTS = [
         "stock": 80,
     },
     {
-        "name": "Monitor Ultrawide 34\"",
+        "name": 'Monitor Ultrawide 34"',
         "description": "Monitor curvo ultrawide 34 polegadas, resolução 3440x1440, 144Hz.",
         "price": "2899.00",
         "stock": 12,
     },
     {
         "name": "Headset Gamer 7.1",
-        "description": "Headset com som surround 7.1 virtual, microfone removível e almofadas memory foam.",
+        "description": (
+            "Headset com som surround 7.1 virtual, microfone removível e almofadas memory foam."
+        ),
         "price": "299.90",
         "stock": 60,
     },
@@ -97,13 +101,17 @@ PRODUCTS = [
     },
     {
         "name": "Webcam Full HD 1080p",
-        "description": "Webcam com resolução 1080p, autofoco e microfone embutido com cancelamento de ruído.",
+        "description": (
+            "Webcam com resolução 1080p, autofoco e microfone embutido com cancelamento de ruído."
+        ),
         "price": "199.90",
         "stock": 90,
     },
     {
         "name": "Hub USB-C 7 em 1",
-        "description": "Concentrador USB-C com HDMI 4K, USB 3.0 x3, SD, microSD e carregamento PD 100W.",
+        "description": (
+            "Concentrador USB-C com HDMI 4K, USB 3.0 x3, SD, microSD e carregamento PD 100W."
+        ),
         "price": "179.90",
         "stock": 110,
     },
@@ -121,7 +129,13 @@ ORDER_TEMPLATES = [
     # Order 4: Daniel — SSD + hub
     {"items": [{"product_index": 5, "quantity": 2}, {"product_index": 7, "quantity": 1}]},
     # Order 5: Eva — webcam + mouse + hub
-    {"items": [{"product_index": 6, "quantity": 1}, {"product_index": 1, "quantity": 1}, {"product_index": 7, "quantity": 2}]},
+    {
+        "items": [
+            {"product_index": 6, "quantity": 1},
+            {"product_index": 1, "quantity": 1},
+            {"product_index": 7, "quantity": 2},
+        ]
+    },
     # Order 6: Alice — teclado + SSD (segundo pedido do mesmo cliente)
     {"items": [{"product_index": 2, "quantity": 1}, {"product_index": 5, "quantity": 1}]},
 ]
@@ -132,7 +146,12 @@ ORDER_TEMPLATES = [
 # ---------------------------------------------------------------------------
 
 
-def _request(method: str, url: str, body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
+def _request(
+    method: str,
+    url: str,
+    body: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+) -> tuple[int, dict[str, Any]]:
     data = json.dumps(body).encode() if body else None
     req_headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if headers:
@@ -152,7 +171,9 @@ def _request(method: str, url: str, body: dict[str, Any] | None = None, headers:
         return exc.code, payload
 
 
-def post(url: str, body: dict[str, Any], headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
+def post(
+    url: str, body: dict[str, Any], headers: dict[str, str] | None = None
+) -> tuple[int, dict[str, Any]]:
     return _request("POST", url, body, headers)
 
 
@@ -167,7 +188,7 @@ def get(url: str) -> tuple[int, dict[str, Any]]:
 
 def check_health(base: str) -> bool:
     print("⏳ Verificando disponibilidade da Core API...", end=" ", flush=True)
-    for attempt in range(10):
+    for _attempt in range(10):
         try:
             status, _ = get(f"{base}/health")
             if status == 200:
@@ -177,7 +198,10 @@ def check_health(base: str) -> bool:
             pass
         print(".", end="", flush=True)
         time.sleep(2)
-    print("\n❌ Core API não respondeu. Verifique se os containers estão rodando: docker compose up -d")
+    print(
+        "\n❌ Core API não respondeu. "
+        "Verifique se os containers estão rodando: docker compose up -d"
+    )
     return False
 
 
@@ -250,10 +274,12 @@ def seed_orders(
             if idx >= len(products):
                 print(f"  ⚠️  Produto índice {idx} não disponível, pulando item.")
                 continue
-            items.append({
-                "product_id": products[idx]["id"],
-                "quantity": item_def["quantity"],
-            })
+            items.append(
+                {
+                    "product_id": products[idx]["id"],
+                    "quantity": item_def["quantity"],
+                }
+            )
 
         if not items:
             print(f"  ⚠️  Pedido {i + 1} sem itens válidos, pulando.")
@@ -266,7 +292,10 @@ def seed_orders(
         status, body = post(f"{base}/orders", payload, headers=headers)
         if status == 202:
             ext_id = body.get("external_id", "?")
-            print(f"  ✅ Pedido {i + 1} ({customer_name}) → external_id={ext_id}, status={body.get('status')}")
+            print(
+                f"  ✅ Pedido {i + 1} ({customer_name}) "
+                f"→ external_id={ext_id}, status={body.get('status')}"
+            )
         else:
             print(f"  ❌ Pedido {i + 1} ({customer_name}) falhou: status={status} body={body}")
 
@@ -276,7 +305,11 @@ def seed_orders(
 
 def print_summary(base: str) -> None:
     print("\n📊 Resumo final:")
-    for resource, label in [("customers", "Clientes"), ("products", "Produtos"), ("orders", "Pedidos")]:
+    for resource, label in [
+        ("customers", "Clientes"),
+        ("products", "Produtos"),
+        ("orders", "Pedidos"),
+    ]:
         s, b = get(f"{base}/{resource}/count")
         count = b.get("count", "?") if s == 200 else f"erro {s}"
         print(f"  {label}: {count}")
@@ -302,7 +335,11 @@ def print_summary(base: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed da plataforma de pedidos via Core API.")
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="URL base da Core API (padrão: http://localhost:8000)")
+    parser.add_argument(
+        "--base-url",
+        default=DEFAULT_BASE_URL,
+        help="URL base da Core API (padrão: http://localhost:8000)",
+    )
     args = parser.parse_args()
 
     base = args.base_url.rstrip("/")
