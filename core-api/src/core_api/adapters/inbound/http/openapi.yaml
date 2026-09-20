@@ -10,7 +10,79 @@ servers:
   - url: /api/v1
     description: Current version
 
+tags:
+  - name: Health
+    description: Liveness and readiness probes for the Core API.
+  - name: Customers
+    description: Customer management.
+  - name: Products
+    description: Product catalog management.
+  - name: Orders
+    description: Order creation and tracking.
+
 paths:
+  # ── Health checks ─────────────────────────────────────────────────────────
+  # These endpoints are served at the root (not under /api/v1).
+  # The path-level `servers` override ensures the correct base URL.
+
+  /health:
+    servers:
+      - url: /
+        description: Root — health/readiness probes
+    get:
+      summary: Liveness probe
+      operationId: health
+      tags: [Health]
+      description: |
+        Returns `200 OK` as long as the process is running.
+        Used by Docker health checks and load balancers to determine whether the
+        container should receive traffic.
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "ok"
+                service: "core-api"
+                timestamp: "2026-01-01T12:00:00.000000+00:00"
+
+  /ready:
+    servers:
+      - url: /
+        description: Root — health/readiness probes
+    get:
+      summary: Readiness probe
+      operationId: ready
+      tags: [Health]
+      description: |
+        Checks whether the service and its dependencies (e.g. PostgreSQL) are
+        ready to serve traffic. Returns `200 OK` when all checks pass, or
+        `503 Service Unavailable` when at least one dependency is unavailable.
+      responses:
+        "200":
+          description: All dependencies are available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+              example:
+                status: "ok"
+                checks:
+                  postgres: "ok"
+        "503":
+          description: One or more dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+              example:
+                status: "degraded"
+                checks:
+                  postgres: "unavailable"
+
   # ── Customers ────────────────────────────────────────────────────────────
 
   /customers:
@@ -560,6 +632,36 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: "ok"
+        service:
+          type: string
+          example: "core-api"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-01-01T12:00:00.000000+00:00"
+
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          example: "ok"
+        checks:
+          type: object
+          description: Map of dependency name to its status detail string.
+          additionalProperties:
+            type: string
+          example:
+            postgres: "ok"
 
     Error:
       type: object

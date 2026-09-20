@@ -260,6 +260,261 @@ docker compose up --scale order-worker=3
 
 ---
 
+## 🗺️ Walkthrough — Happy path local
+
+Passo a passo completo para subir o ambiente, verificar os health checks e acompanhar uma Order do início ao fim.
+
+> **Pré-requisito:** `docker`, `docker compose` e `curl` instalados.
+
+### 1 · Subir o ambiente
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+```
+
+Aguarde todos os containers ficarem `healthy`. Você pode acompanhar com:
+
+```bash
+docker compose ps
+```
+
+Saída esperada (todos `healthy`):
+
+```
+NAME               STATUS
+core-api           Up (healthy)
+customer-service   Up (healthy)
+order-service      Up (healthy)
+order-worker       Up
+postgres           Up (healthy)
+product-service    Up (healthy)
+rabbitmq           Up (healthy)
+redis              Up (healthy)
+```
+
+### 2 · Verificar health checks
+
+Cada serviço expõe dois endpoints:
+
+| Endpoint | Descrição |
+|---|---|
+| `GET /health` | Liveness — retorna `200` se o processo está no ar |
+| `GET /ready` | Readiness — verifica dependências (PostgreSQL) |
+
+```bash
+# Core API
+curl -s http://localhost:8000/health | jq
+curl -s http://localhost:8000/ready  | jq
+
+# Customer Service (acesso direto, útil para debug)
+curl -s http://localhost:8001/health | jq
+curl -s http://localhost:8001/ready  | jq
+
+# Product Service
+curl -s http://localhost:8002/health | jq
+curl -s http://localhost:8002/ready  | jq
+
+# Order Service
+curl -s http://localhost:8003/health | jq
+curl -s http://localhost:8003/ready  | jq
+```
+
+Resposta de `/health`:
+
+```json
+{
+  "status": "ok",
+  "service": "customer-service",
+  "timestamp": "2026-01-01T12:00:00.000000+00:00"
+}
+```
+
+Resposta de `/ready` (saudável):
+
+```json
+{
+  "status": "ok",
+  "checks": { "postgres": "ok" }
+}
+```
+
+Resposta de `/ready` (degradado):
+
+```json
+{
+  "status": "degraded",
+  "checks": { "postgres": "unavailable" }
+}
+```
+
+### 3 · Criar um Customer
+
+```bash
+CUSTOMER=$(curl -s -X POST http://localhost:8000/api/v1/customers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ada Lovelace",
+    "email": "ada@example.com",
+    "phone": "11999990000"
+  }')
+
+echo $CUSTOMER | jq
+
+CUSTOMER_ID=$(echo $CUSTOMER | jq -r '.id')
+echo "Customer ID: $CUSTOMER_ID"
+```
+
+Resposta esperada (`201 Created`):
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "phone": "11999990000",
+  "created_at": "2026-01-01T12:00:00+00:00",
+  "updated_at": "2026-01-01T12:00:00+00:00"
+}
+```
+
+### 4 · Criar um Product
+
+```bash
+PRODUCT=$(curl -s -X POST http://localhost:8000/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Teclado Mecânico",
+    "description": "Switch Cherry MX Red",
+    "price": 349.90,
+    "stock": 50
+  }')
+
+echo $PRODUCT | jq
+
+PRODUCT_ID=$(echo $PRODUCT | jq -r '.id')
+echo "Product ID: $PRODUCT_ID"
+```
+
+Resposta esperada (`201 Created`):
+
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "name": "Teclado Mecânico",
+  "description": "Switch Cherry MX Red",
+  "price": 349.9,
+  "stock": 50,
+  "created_at": "2026-01-01T12:00:00+00:00",
+  "updated_at": "2026-01-01T12:00:00+00:00"
+}
+```
+
+### 5 · Criar uma Order
+
+```bash
+ORDER=$(curl -s -X POST http://localhost:8000/api/v1/orders \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"customer_id\": \"$CUSTOMER_ID\",
+    \"items\": [
+      {
+        \"product_id\": \"$PRODUCT_ID\",
+        \"quantity\": 2
+      }
+    ]
+  }")
+
+echo $ORDER | jq
+
+EXTERNAL_ID=$(echo $ORDER | jq -r '.external_id')
+echo "External ID: $EXTERNAL_ID"
+```
+
+Resposta esperada (`202 Accepted`):
+
+```json
+{
+  "external_id": "770e8400-e29b-41d4-a716-446655440002",
+  "status": "PENDING"
+}
+```
+
+> A Order entra com `status: PENDING` e o `external_id` gerado pelo Order Service. O processamento acontece de forma **assíncrona** — o Order Worker consome a fila e completa a Order.
+
+### 6 · Acompanhar o processamento
+
+O Worker processa a mensagem em milissegundos. Consulte o status logo após a criação:
+
+```bash
+# Aguarda o Worker processar (geralmente < 1s)
+sleep 1
+
+curl -s "http://localhost:8000/api/v1/orders/$EXTERNAL_ID" | jq
+```
+
+Resposta esperada com `status: COMPLETED`:
+
+```json
+{
+  "id": "...",
+  "external_id": "770e8400-e29b-41d4-a716-446655440002",
+  "customer_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "COMPLETED",
+  "total_amount": 699.8,
+  "items": [
+    {
+      "product_id": "660e8400-e29b-41d4-a716-446655440001",
+      "quantity": 2,
+      "unit_price": 349.9
+    }
+  ],
+  "created_at": "2026-01-01T12:00:00+00:00",
+  "updated_at": "2026-01-01T12:00:01+00:00"
+}
+```
+
+> **`total_amount`** é calculado pelo Worker: `2 × 349.90 = 699.80`. O `unit_price` registrado no item captura o preço do produto **no momento do processamento**.
+
+### 7 · Acompanhar os logs do Worker
+
+```bash
+# Logs do Worker em tempo real
+docker compose logs -f order-worker
+```
+
+Saída esperada para uma Order processada com sucesso:
+
+```
+order-worker | INFO  Received OrderCreated  external_id=770e8400-...
+order-worker | INFO  Processing OrderCreated
+order-worker | INFO  Order transitioned to PROCESSING
+order-worker | INFO  Order processed successfully  total_amount=699.80
+order-worker | INFO  Message ACKed  external_id=770e8400-...
+```
+
+### 8 · Acessar o Swagger
+
+A documentação interativa está disponível em:
+
+```
+http://localhost:8000/docs
+```
+
+Você pode usar o Swagger UI para explorar todos os endpoints e executar requisições diretamente no browser.
+
+### 9 · Parar o ambiente
+
+```bash
+# Parar sem remover volumes (dados persistidos)
+docker compose down
+
+# Parar e remover volumes (ambiente limpo)
+docker compose down -v
+```
+
+---
+
 ## 📡 API pública
 
 Base URL: `http://localhost:8000/api/v1`
