@@ -1,0 +1,4 @@
+-- Create databases for each service
+CREATE DATABASE customer_db;
+CREATE DATABASE product_db;
+CREATE DATABASE order_db;

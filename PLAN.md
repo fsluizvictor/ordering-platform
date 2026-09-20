@@ -100,8 +100,8 @@ Reportar explicitamente quando a fase estiver completa e listar pendências ante
 ## Status do projeto
 
 ```text
-[ ] PHASE 0 — Preparation
-[ ] PHASE 1 — Docker Infrastructure
+[x] PHASE 0 — Preparation
+[x] PHASE 1 — Docker Infrastructure
 [ ] PHASE 2 — Customer Service
 [ ] PHASE 3 — Product Service
 [ ] PHASE 4 — Core API
