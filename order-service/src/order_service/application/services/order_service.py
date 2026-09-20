@@ -38,12 +38,21 @@ class OrderService:
         existing PENDING record — it does not re-create it.
         """
         order = Order.create(customer_id=customer_id, items=items)
+        log_extra = {"customer_id": str(customer_id), "item_count": len(items)}
+        if correlation_id:
+            log_extra["correlation_id"] = str(correlation_id)
+
+        logger.info("Creating order", extra=log_extra)
 
         # Persist first so GET /orders/{external_id} works immediately.
         saved = self._repo.save(order)
         logger.info(
             "Order persisted as PENDING",
-            extra={"order_id": str(saved.id), "external_id": str(saved.external_id)},
+            extra={
+                "external_id": str(saved.external_id),
+                "order_id": str(saved.id),
+                "correlation_id": str(correlation_id) if correlation_id else None,
+            },
         )
 
         event = OrderCreatedEvent(
@@ -67,6 +76,7 @@ class OrderService:
             extra={
                 "event_id": str(event.event_id),
                 "external_id": str(saved.external_id),
+                "correlation_id": str(correlation_id) if correlation_id else None,
             },
         )
 

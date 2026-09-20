@@ -23,6 +23,21 @@ from order_service.domain.ports.product_lookup import ProductLookupPort
 logger = logging.getLogger(__name__)
 
 
+class _CorrelationFilter(logging.Filter):
+    """Adds correlation_id and external_id to log records."""
+
+    def __init__(self, external_id: str, correlation_id: str) -> None:
+        super().__init__()
+        self.external_id = external_id
+        self.correlation_id = correlation_id
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.external_id = self.external_id  # type: ignore[attr-defined]
+        if self.correlation_id:
+            record.correlation_id = self.correlation_id  # type: ignore[attr-defined]
+        return True
+
+
 class OrderProcessor:
     """Processes an OrderCreated event through validation, pricing, and persistence."""
 
@@ -47,74 +62,72 @@ class OrderProcessor:
         customer_id = uuid.UUID(str(payload["customer_id"]))
         correlation_id = str(payload.get("correlation_id") or "")
 
-        log_extra = {"external_id": str(external_id), "correlation_id": correlation_id}
-        logger.info("Processing OrderCreated", extra=log_extra)
+        # Attach correlation_id and external_id to all logs from this processor.
+        log_filter = _CorrelationFilter(str(external_id), correlation_id)
+        logger.addFilter(log_filter)
 
-        order = self._repo.find_by_external_id(external_id)
-        if order is None:
-            raise OrderNotFoundError(f"Order not found for external_id={external_id}")
+        try:
+            logger.info("Processing OrderCreated")
 
-        # Idempotency: already processed by a previous Worker run.
-        if order.status in (OrderStatus.COMPLETED, OrderStatus.FAILED):
-            logger.info(
-                "Order already in terminal state, skipping (idempotent)",
-                extra={**log_extra, "status": order.status.value},
+            order = self._repo.find_by_external_id(external_id)
+            if order is None:
+                raise OrderNotFoundError(f"Order not found for external_id={external_id}")
+
+            # Idempotency: already processed by a previous Worker run.
+            if order.status in (OrderStatus.COMPLETED, OrderStatus.FAILED):
+                logger.info("Order already in terminal state, skipping (idempotent)",
+                           extra={"status": order.status.value})
+                return
+
+            # Transition to PROCESSING (idempotent if already PROCESSING from a
+            # previous interrupted attempt).
+            if order.status == OrderStatus.PENDING:
+                order.transition_to(OrderStatus.PROCESSING)
+                self._repo.update(order)
+                logger.info("Order transitioned to PROCESSING")
+
+            # --- Business validation ---
+
+            customer = self._customer_lookup.get_customer(customer_id)
+            if customer is None:
+                logger.warning("Customer not found, failing order")
+                self._fail_order(order)
+                return
+
+            item_prices: dict[uuid.UUID, Decimal] = {}
+            for item in order.items:
+                product = self._product_lookup.get_product(item.product_id)
+                if product is None:
+                    logger.warning("Product not found, failing order",
+                                 extra={"product_id": str(item.product_id)})
+                    self._fail_order(order)
+                    return
+                if item.quantity > product.stock:
+                    logger.warning("Insufficient stock, failing order",
+                                 extra={
+                                     "product_id": str(item.product_id),
+                                     "requested": item.quantity,
+                                     "available": product.stock,
+                                 })
+                    self._fail_order(order)
+                    return
+                item_prices[item.product_id] = product.price
+
+            # --- Price and total calculation ---
+            self._apply_prices(order.items, item_prices)
+            order.total_amount = sum(
+                (item.unit_price * item.quantity for item in order.items),
+                Decimal("0"),
             )
-            return
 
-        # Transition to PROCESSING (idempotent if already PROCESSING from a
-        # previous interrupted attempt).
-        if order.status == OrderStatus.PENDING:
-            order.transition_to(OrderStatus.PROCESSING)
+            # --- Persist COMPLETED ---
+            order.transition_to(OrderStatus.COMPLETED)
             self._repo.update(order)
 
-        # --- Business validation ---
-
-        customer = self._customer_lookup.get_customer(customer_id)
-        if customer is None:
-            logger.warning("Customer not found, failing order", extra=log_extra)
-            self._fail_order(order)
-            return
-
-        item_prices: dict[uuid.UUID, Decimal] = {}
-        for item in order.items:
-            product = self._product_lookup.get_product(item.product_id)
-            if product is None:
-                logger.warning(
-                    "Product not found, failing order",
-                    extra={**log_extra, "product_id": str(item.product_id)},
-                )
-                self._fail_order(order)
-                return
-            if item.quantity > product.stock:
-                logger.warning(
-                    "Insufficient stock, failing order",
-                    extra={
-                        **log_extra,
-                        "product_id": str(item.product_id),
-                        "requested": item.quantity,
-                        "available": product.stock,
-                    },
-                )
-                self._fail_order(order)
-                return
-            item_prices[item.product_id] = product.price
-
-        # --- Price and total calculation ---
-        self._apply_prices(order.items, item_prices)
-        order.total_amount = sum(
-            (item.unit_price * item.quantity for item in order.items),
-            Decimal("0"),
-        )
-
-        # --- Persist COMPLETED ---
-        order.transition_to(OrderStatus.COMPLETED)
-        self._repo.update(order)
-
-        logger.info(
-            "Order processed successfully",
-            extra={**log_extra, "total_amount": str(order.total_amount)},
-        )
+            logger.info("Order processed successfully",
+                       extra={"total_amount": str(order.total_amount)})
+        finally:
+            logger.removeFilter(log_filter)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

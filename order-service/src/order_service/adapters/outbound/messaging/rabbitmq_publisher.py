@@ -53,6 +53,13 @@ class RabbitMQOrderPublisher(OrderPublisher):
         }
         body = json.dumps(payload).encode()
 
+        log_extra = {
+            "event_id": str(event.event_id),
+            "external_id": str(event.external_id),
+        }
+        if event.correlation_id:
+            log_extra["correlation_id"] = str(event.correlation_id)
+
         params = pika.URLParameters(self._url)
         connection = pika.BlockingConnection(params)
         try:
@@ -69,10 +76,7 @@ class RabbitMQOrderPublisher(OrderPublisher):
                     message_id=str(event.event_id),
                 ),
             )
-            logger.debug(
-                "Published OrderCreated",
-                extra={"external_id": str(event.external_id)},
-            )
+            logger.debug("Published OrderCreated", extra=log_extra)
         finally:
             try:
                 connection.close()

@@ -104,6 +104,7 @@ class RabbitMQConsumer:
         headers: dict[str, object] = dict(properties.headers or {})
         retry_count = int(headers.get(_RETRY_HEADER, 0))
         correlation_id = properties.correlation_id or ""
+        event_id = properties.message_id or ""
 
         try:
             payload = json.loads(body.decode())
@@ -111,7 +112,11 @@ class RabbitMQConsumer:
             # Malformed message — no point in retrying; send straight to DLQ.
             logger.error(
                 "Unparseable message, sending to DLQ",
-                extra={"error": str(exc), "correlation_id": correlation_id},
+                extra={
+                    "error": str(exc),
+                    "correlation_id": correlation_id,
+                    "event_id": event_id,
+                },
             )
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             return
@@ -122,6 +127,7 @@ class RabbitMQConsumer:
                 "external_id": payload.get("external_id"),
                 "retry_count": retry_count,
                 "correlation_id": correlation_id,
+                "event_id": event_id,
             },
         )
 
@@ -135,6 +141,7 @@ class RabbitMQConsumer:
                 extra={
                     "external_id": payload.get("external_id"),
                     "correlation_id": correlation_id,
+                    "event_id": event_id,
                 },
             )
         except Exception as exc:  # noqa: BLE001
@@ -145,6 +152,7 @@ class RabbitMQConsumer:
                     "retry_count": retry_count,
                     "error": str(exc),
                     "correlation_id": correlation_id,
+                    "event_id": event_id,
                 },
                 exc_info=True,
             )
@@ -158,6 +166,9 @@ class RabbitMQConsumer:
         body: bytes,
         retry_count: int,
     ) -> None:
+        correlation_id = properties.correlation_id or ""
+        event_id = properties.message_id or ""
+
         if retry_count < self._max_retries:
             # Republish with incremented counter and ACK the original so the
             # counter is reliably tracked across redeliveries.
@@ -178,14 +189,24 @@ class RabbitMQConsumer:
             channel.basic_ack(delivery_tag=method.delivery_tag)
             logger.warning(
                 "Message requeued for retry",
-                extra={"retry_count": new_count, "max_retries": self._max_retries},
+                extra={
+                    "retry_count": new_count,
+                    "max_retries": self._max_retries,
+                    "correlation_id": correlation_id,
+                    "event_id": event_id,
+                },
             )
         else:
             # Retry budget exhausted — NACK so DLX routes to DLQ.
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             logger.error(
                 "Retry limit exceeded, message sent to DLQ",
-                extra={"retry_count": retry_count, "max_retries": self._max_retries},
+                extra={
+                    "retry_count": retry_count,
+                    "max_retries": self._max_retries,
+                    "correlation_id": correlation_id,
+                    "event_id": event_id,
+                },
             )
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from flask import Blueprint, g, jsonify, request
@@ -20,6 +21,7 @@ from order_service.domain.exceptions import (
 )
 
 order_bp = Blueprint("orders", __name__)
+logger = logging.getLogger(__name__)
 
 
 def _get_service() -> OrderService:
@@ -93,11 +95,27 @@ def create_order() -> tuple:
         except ValueError:
             pass
 
+    log_extra = {
+        "customer_id": str(customer_id),
+        "item_count": len(items_raw),
+    }
+    if correlation_id:
+        log_extra["correlation_id"] = str(correlation_id)
+
+    logger.info("POST /orders request received", extra=log_extra)
+
     try:
         order = _get_service().create_order(
             customer_id=customer_id,
             items=items_raw,
             correlation_id=correlation_id,
+        )
+        logger.info(
+            "Order creation successful",
+            extra={
+                "external_id": str(order.external_id),
+                "correlation_id": str(correlation_id) if correlation_id else None,
+            },
         )
         return jsonify({"external_id": str(order.external_id), "status": order.status.value}), 202
     except InvalidOrderError as exc:
