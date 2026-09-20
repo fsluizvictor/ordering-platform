@@ -9,6 +9,7 @@ from customer_service.adapters.outbound.persistence.sqlalchemy_customer_reposito
     SQLAlchemyCustomerRepository,
 )
 from customer_service.application.services.customer_service import CustomerService
+from customer_service.domain.entities.customer import Customer
 from customer_service.domain.exceptions import (
     CustomerEmailAlreadyExistsError,
     CustomerNotFoundError,
@@ -29,14 +30,14 @@ def _get_service() -> CustomerService:
     return CustomerService(repo)
 
 
-def _serialize(customer: object) -> dict:  # type: ignore[type-arg]
+def _serialize(customer: Customer) -> dict[str, object]:
     return {
-        "id": str(customer.id),  # type: ignore[attr-defined]
-        "name": customer.name,  # type: ignore[attr-defined]
-        "email": customer.email,  # type: ignore[attr-defined]
-        "phone": customer.phone,  # type: ignore[attr-defined]
-        "created_at": customer.created_at.isoformat(),  # type: ignore[attr-defined]
-        "updated_at": customer.updated_at.isoformat(),  # type: ignore[attr-defined]
+        "id": str(customer.id),
+        "name": customer.name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "created_at": customer.created_at.isoformat(),
+        "updated_at": customer.updated_at.isoformat(),
     }
 
 

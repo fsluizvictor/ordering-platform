@@ -78,6 +78,34 @@ services:
       retries: 5
       start_period: 15s
 
+  product-service:
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
+    container_name: product-service
+    environment:
+      SERVICE_NAME: product-service
+      PRODUCT_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/product_db
+      PORT: "8002"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8002:8002"
+    networks:
+      - ordering_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/ready')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   postgres_data:
   redis_data:
