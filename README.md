@@ -260,6 +260,149 @@ docker compose up --scale order-worker=3
 
 ---
 
+## 🌱 Populando o banco para testes (Seed)
+
+O script `scripts/seed.py` popula a plataforma com dados realistas chamando exclusivamente a **Core API** — o mesmo caminho que qualquer cliente externo percorreria. Isso significa que todo o fluxo real é exercitado: validações de domínio, publicação no RabbitMQ e processamento assíncrono pelo Order Worker.
+
+### O que é criado
+
+| Recurso | Quantidade | Exemplos |
+|---|---|---|
+| Clientes | 5 | Alice Souza, Bruno Lima, Carla Mendes... |
+| Produtos | 8 | Notebook Pro 15, Mouse Sem Fio, Monitor Ultrawide... |
+| Pedidos | 6 | Combinações variadas de produtos, clientes diferentes |
+
+Os pedidos são enviados com `Idempotency-Key` único e processados de forma assíncrona pelo Worker — ao final do script você verá os status reais (tipicamente `COMPLETED`).
+
+### Passo a passo
+
+**1. Suba os containers** (e aguarde todos ficarem `healthy`):
+
+```bash
+cp .env.example .env          # apenas na primeira vez
+docker compose up --build -d
+docker compose ps             # confirme que todos estão healthy
+```
+
+**2. Execute o seed:**
+
+```bash
+make seed
+# equivalente a: python scripts/seed.py
+```
+
+Você verá uma saída como esta:
+
+```
+============================================================
+  Ordering Platform — Seed de Dados
+  Core API: http://localhost:8000
+============================================================
+⏳ Verificando disponibilidade da Core API... ✅ online
+
+📋 Criando clientes...
+  ✅ Alice Souza  → id=3f2a1b...
+  ✅ Bruno Lima   → id=7c4d2e...
+  ✅ Carla Mendes → id=1a9f3c...
+  ...
+
+📦 Criando produtos...
+  ✅ Notebook Pro 15 (R$ 4599.90, estoque: 25) → id=8b2e4a...
+  ✅ Mouse Sem Fio Ergonômico (R$ 129.90, estoque: 150) → id=5d1f9b...
+  ...
+
+🛒 Criando pedidos (fluxo assíncrono via RabbitMQ)...
+  ✅ Pedido 1 (Alice Souza)   → external_id=a1b2c3..., status=PENDING
+  ✅ Pedido 2 (Bruno Lima)    → external_id=d4e5f6..., status=PENDING
+  ...
+
+⏳ Aguardando 5s para o Order Worker processar os pedidos...
+
+📊 Resumo final:
+  Clientes: 5
+  Produtos: 8
+  Pedidos:  6
+
+🔍 Pedidos criados:
+  • external_id=a1b2c3...  status=COMPLETED  total=R$4859.70  customer_id=3f2a1b...
+  • external_id=d4e5f6...  status=COMPLETED  total=R$649.80   customer_id=7c4d2e...
+  ...
+
+✅ Seed concluído! A plataforma está pronta para testes.
+```
+
+> O script é **idempotente**: se rodado novamente, detecta conflitos de email/nome e reusa os registros existentes sem criar duplicatas.
+
+**3. Acompanhe o processamento dos pedidos em tempo real** (em outro terminal):
+
+```bash
+docker compose logs -f order-worker
+```
+
+Saída esperada para cada pedido processado:
+
+```
+order-worker | INFO  Received OrderCreated  external_id=a1b2c3...
+order-worker | INFO  Order transitioned to PROCESSING
+order-worker | INFO  Order processed successfully  total_amount=4859.70
+order-worker | INFO  Message ACKed  external_id=a1b2c3...
+```
+
+**4. Verifique os dados via API:**
+
+```bash
+# Listar todos os clientes criados
+curl -s http://localhost:8000/api/v1/customers | jq
+
+# Listar todos os produtos criados
+curl -s http://localhost:8000/api/v1/products | jq
+
+# Listar todos os pedidos (com status COMPLETED após processamento)
+curl -s http://localhost:8000/api/v1/orders | jq
+
+# Inspecionar um pedido específico (substitua pelo external_id real)
+curl -s http://localhost:8000/api/v1/orders/<external_id> | jq
+
+# Contagens rápidas
+curl -s http://localhost:8000/api/v1/customers/count | jq
+curl -s http://localhost:8000/api/v1/products/count | jq
+curl -s http://localhost:8000/api/v1/orders/count | jq
+```
+
+**5. Explore pelo Swagger UI:**
+
+Acesse **http://localhost:8000/docs** para navegar pelos endpoints e executar requisições diretamente no browser.
+
+### Opções do script
+
+```bash
+# URL customizada (ex: ambiente remoto ou porta diferente)
+python scripts/seed.py --base-url http://meu-host:8000
+```
+
+### Alternativa — Seed SQL direto (fallback)
+
+Caso precise popular o banco sem passar pela API (ex: serviços fora do ar, testes de infra):
+
+```bash
+make seed-sql
+# equivalente a: docker compose exec -T postgres psql -U ordering -f /dev/stdin < scripts/seed.sql
+```
+
+> ⚠️ O seed SQL insere dados com UUIDs fixos, bypassa as validações de domínio e **não exercita o fluxo assíncrono**. Use apenas como fallback.
+
+### Resetar e recomeçar
+
+Para limpar todos os dados e rodar o seed do zero:
+
+```bash
+docker compose down -v          # remove volumes (apaga todos os dados)
+docker compose up -d            # sobe novamente
+make seed                       # repopula
+```
+
+---
+
 ## 🗺️ Walkthrough — Happy path local
 
 Passo a passo completo para subir o ambiente, verificar os health checks e acompanhar uma Order do início ao fim.
