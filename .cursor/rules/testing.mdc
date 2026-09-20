@@ -1,0 +1,91 @@
+---
+description: Testing standards and test organization
+globs:
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "tests/**/*.py"
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Framework
+
+Use `pytest`.
+
+Tests must be deterministic and independently executable.
+
+## Test Structure
+
+Prefer Arrange / Act / Assert:
+
+```python
+# Arrange
+...
+
+# Act
+...
+
+# Assert
+...
+```
+
+## Naming
+
+Test names must describe behavior.
+
+Good:
+
+```python
+def test_should_reject_product_when_price_is_zero():
+    ...
+```
+
+Avoid:
+
+```python
+def test_product_1():
+    ...
+```
+
+## Unit Tests
+
+Unit tests should cover:
+
+- domain rules;
+- application use cases;
+- validation;
+- error conditions;
+- idempotency behavior;
+- calculations.
+
+Keep unit tests isolated from external infrastructure.
+
+## Integration Tests
+
+Integration tests should cover relevant boundaries:
+
+- PostgreSQL;
+- Redis;
+- RabbitMQ;
+- HTTP service integration.
+
+Prefer real infrastructure in integration tests when practical instead of mocking the entire system.
+
+## Mocks
+
+Do not mock everything.
+
+Mock external boundaries when isolation is the purpose of the test.
+
+Do not mock the class under test.
+
+## Regression
+
+When fixing a reproducible bug, add a regression test when practical.
+
+## Test Quality
+
+Tests should verify behavior, not implementation details.
+
+Avoid tests that break merely because internal class structure changes while behavior remains correct.

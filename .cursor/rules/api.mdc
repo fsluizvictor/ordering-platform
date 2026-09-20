@@ -1,0 +1,81 @@
+---
+description: REST API and HTTP contract rules
+globs:
+  - "**/adapters/inbound/**/*.py"
+  - "**/api/**/*.py"
+  - "**/controllers/**/*.py"
+  - "**/*route*.py"
+  - "**/*controller*.py"
+alwaysApply: false
+---
+
+# API Rules
+
+## REST
+
+Follow REST conventions consistently.
+
+Use HTTP methods according to their semantics:
+
+- GET for reads
+- POST for creation/actions that create resources or trigger asynchronous processing
+- PUT for replacement/update
+- DELETE for deletion
+
+## Status Codes
+
+Use appropriate status codes:
+
+- `200 OK` for successful reads/updates with a response body.
+- `201 Created` for synchronous resource creation.
+- `202 Accepted` for asynchronous Order creation.
+- `204 No Content` for successful operations without a response body.
+- `400 Bad Request` for malformed requests.
+- `404 Not Found` when a resource does not exist.
+- `409 Conflict` for conflicts such as uniqueness violations.
+- `422 Unprocessable Entity` for valid requests that violate business validation.
+- `500 Internal Server Error` only for unexpected server errors.
+
+## Contracts
+
+- Do not expose ORM/database models directly as API contracts.
+- Use request/response DTOs or schemas.
+- Keep API contracts stable.
+- Document breaking changes.
+- Keep Swagger/OpenAPI synchronized with implementation.
+
+## Validation
+
+Validate input at the API boundary.
+
+Do not rely exclusively on API validation; important business invariants must also be protected in the domain/application/database layers.
+
+## Errors
+
+Return a consistent error format.
+
+Do not expose:
+
+- stack traces;
+- internal exception messages;
+- database connection details;
+- credentials;
+- implementation details.
+
+Include a request/correlation ID when available.
+
+## Idempotency
+
+Order creation must support:
+
+```text
+Idempotency-Key
+```
+
+Do not implement idempotency only in the HTTP controller. The persistence layer must provide the final uniqueness guarantee.
+
+## Observability
+
+Every request should have a correlation/request ID.
+
+Propagate the ID to downstream operations when applicable.

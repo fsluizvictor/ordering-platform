@@ -1,0 +1,81 @@
+---
+description: Python tooling, formatting, linting and dependency rules
+globs:
+  - "**/*.py"
+  - "pyproject.toml"
+alwaysApply: true
+---
+
+# Python Tooling Rules
+
+## Required Tools
+
+The project should centralize Python quality tooling in `pyproject.toml`.
+
+Recommended tools:
+
+- Ruff — linting and import sorting.
+- Black — code formatting.
+- MyPy — static type checking.
+- Pytest — automated tests.
+- Coverage — test coverage measurement.
+
+## Formatting
+
+Code must be formatted consistently.
+
+Do not manually fight the formatter.
+
+Prefer running:
+
+```bash
+ruff check .
+ruff format .
+```
+
+## Linting
+
+Fix Ruff violations rather than disabling rules without justification.
+
+If a rule must be disabled, keep the exception as narrow as possible and document why when the reason is not obvious.
+
+Avoid project-wide rule suppression.
+
+## Type Checking
+
+Use type hints throughout the application.
+
+Run MyPy against application code.
+
+Avoid `Any` unless there is a justified boundary where precise typing is not practical.
+
+## Dependencies
+
+Use the project's dependency manager/configuration consistently.
+
+Do not add duplicate libraries that solve the same problem.
+
+Before introducing a new dependency, verify whether an existing project dependency or the standard library already solves the requirement.
+
+## Automation
+
+Quality checks should eventually be executable with a single command or Make target.
+
+Recommended:
+
+```bash
+make lint
+make test
+make typecheck
+```
+
+## CI
+
+CI should run at minimum:
+
+1. lint;
+2. formatting check;
+3. type checking;
+4. tests.
+
+A change should not be considered complete if it breaks the configured quality gates.

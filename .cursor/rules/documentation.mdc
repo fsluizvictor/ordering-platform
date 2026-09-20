@@ -1,0 +1,70 @@
+---
+description: Documentation and architectural documentation rules
+globs:
+  - "**/*.py"
+  - "**/*.md"
+alwaysApply: false
+---
+
+# Documentation Rules
+
+## General
+
+Documentation should explain intent, behavior, constraints, and architectural decisions.
+
+Do not document obvious code line-by-line.
+
+## Architecture
+
+When a significant architectural decision changes, update:
+
+```text
+docs/architecture.md
+docs/decisions.md
+```
+
+when applicable.
+
+## API
+
+When an API contract changes, update:
+
+```text
+docs/api-contracts.md
+```
+
+and the OpenAPI/Swagger definition.
+
+## Requirements
+
+Do not silently change business requirements.
+
+If implementation reveals an ambiguity or conflict, record it and resolve it before changing behavior.
+
+## AI-Assisted Development
+
+Before implementing a feature, inspect:
+
+- `AGENTS.md`;
+- relevant `.cursor/rules/*.mdc`;
+- relevant documents under `docs/`.
+
+Do not invent requirements that are not documented.
+
+When a requested implementation conflicts with an existing architectural rule, identify the conflict before coding.
+
+## Comments
+
+Comments should explain:
+
+- why something is necessary;
+- a non-obvious constraint;
+- an external limitation;
+- a deliberate architectural choice.
+
+Avoid comments such as:
+
+```python
+# Increment counter
+counter += 1
+```

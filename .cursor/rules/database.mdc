@@ -1,0 +1,91 @@
+---
+description: PostgreSQL and persistence rules
+globs:
+  - "**/adapters/outbound/**/*.py"
+  - "**/*repository*.py"
+  - "**/models/**/*.py"
+  - "**/database/**/*.py"
+  - "**/migrations/**/*.py"
+alwaysApply: false
+---
+
+# Database Rules
+
+## Ownership
+
+Each service owns its data.
+
+A service must never directly query another service's database.
+
+## PostgreSQL
+
+Use PostgreSQL as the source of truth for persistent business data.
+
+Use SQLAlchemy for database access.
+
+## Repository
+
+Repositories are responsible for persistence operations.
+
+Repositories must not contain business rules.
+
+Bad:
+
+```python
+def create_order(order):
+    if order.total > 1000:
+        ...
+```
+
+Business decisions belong outside the repository.
+
+## Transactions
+
+Use database transactions for operations that must be atomic.
+
+Commit only when the complete persistence operation succeeds.
+
+Rollback when an operation fails.
+
+## Constraints
+
+Important invariants should be reinforced by database constraints.
+
+Examples:
+
+- unique email;
+- unique external_id;
+- foreign keys;
+- non-null required fields;
+- valid numeric constraints where appropriate.
+
+## Migrations
+
+All schema changes must be represented by migrations.
+
+Do not manually modify production schemas.
+
+## Models
+
+Do not expose SQLAlchemy models directly through the API.
+
+Translate between persistence models and domain/application objects.
+
+## Queries
+
+- Avoid N+1 queries.
+- Fetch only the data required.
+- Use indexes for frequently queried fields when justified.
+- Avoid raw SQL unless SQLAlchemy cannot express the required operation clearly.
+
+## Idempotency
+
+Database uniqueness is the final protection against duplicate Order creation.
+
+Do not rely exclusively on:
+
+```text
+SELECT → if not exists → INSERT
+```
+
+Use database constraints to handle concurrent requests safely.

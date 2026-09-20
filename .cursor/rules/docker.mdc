@@ -1,0 +1,72 @@
+---
+description: Docker and containerization standards
+globs:
+  - "**/Dockerfile"
+  - "**/docker-compose.yml"
+  - "**/compose.yml"
+  - "**/*.yaml"
+  - "**/*.yml"
+alwaysApply: false
+---
+
+# Docker Rules
+
+## Reproducibility
+
+Services must be reproducible from Docker configuration.
+
+The project must be executable through Docker Compose.
+
+## Configuration
+
+Use environment variables for configuration.
+
+Never hardcode:
+
+- passwords;
+- tokens;
+- credentials;
+- environment-specific URLs.
+
+Provide `.env.example` with documented variable names.
+
+## Images
+
+- Keep images as small as reasonably practical.
+- Do not install unnecessary packages.
+- Separate build/runtime concerns when multi-stage builds provide a clear benefit.
+- Do not run the application as root when practical.
+
+## Health
+
+Infrastructure dependencies should expose health checks where practical.
+
+Services should fail clearly when required dependencies are unavailable.
+
+## Development vs Production
+
+Do not mix development-only tooling into production runtime dependencies unnecessarily.
+
+## Networking
+
+Services should communicate through Docker Compose service names rather than hardcoded IP addresses.
+
+Example:
+
+```text
+postgres:5432
+redis:6379
+rabbitmq:5672
+```
+
+## Secrets
+
+Never commit real secrets.
+
+Use environment variables or an appropriate secret-management mechanism.
+
+## Scaling
+
+Order Worker must support multiple instances consuming the same RabbitMQ queue.
+
+Do not create a separate queue per worker instance.

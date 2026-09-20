@@ -1,0 +1,109 @@
+---
+description: Python coding standards and language best practices
+globs:
+  - "**/*.py"
+alwaysApply: false
+---
+
+# Python Development Rules
+
+## General
+
+- Follow PEP 8 and the project's configured Ruff rules.
+- Use 4 spaces for indentation.
+- Keep functions and classes focused on a single responsibility.
+- Prefer simple, readable code over clever abstractions.
+- Avoid premature abstractions.
+- Do not introduce dependencies without a clear technical reason.
+
+## Naming
+
+- Use `snake_case` for variables, functions, methods, and modules.
+- Use `PascalCase` for classes and exceptions.
+- Use `UPPER_SNAKE_CASE` for constants.
+- Names must describe intent rather than implementation details.
+
+## Type Hints
+
+- Use type hints for function parameters and return values.
+- Use type hints on public methods and important attributes.
+- Prefer precise types over `Any`.
+- Use modern Python typing syntax when supported by the project Python version.
+
+Example:
+
+```python
+def get_customer(customer_id: UUID) -> Customer | None:
+    ...
+```
+
+## Imports
+
+- Prefer explicit imports.
+- Do not use wildcard imports.
+- Keep imports organized and let Ruff enforce import ordering.
+- Separate standard-library, third-party, and local imports.
+
+## Functions
+
+- Keep functions small and cohesive.
+- Avoid functions with excessive parameters.
+- Prefer returning explicit values over hidden side effects.
+- Avoid mutable default arguments.
+
+Bad:
+
+```python
+def add_item(items=[]):
+    ...
+```
+
+Good:
+
+```python
+def add_item(items: list[Item] | None = None):
+    items = items or []
+```
+
+## Exceptions
+
+- Never use bare `except`.
+- Do not silently swallow exceptions.
+- Catch the narrowest exception type possible.
+- Use domain-specific exceptions when an error represents a business condition.
+- Preserve the original exception when translating infrastructure errors.
+
+Bad:
+
+```python
+try:
+    ...
+except Exception:
+    pass
+```
+
+## Logging
+
+- Use Python's `logging` infrastructure.
+- Do not use `print()` for application logging.
+- Include useful contextual information such as request ID or event ID.
+- Never log passwords, tokens, credentials, or unnecessary sensitive data.
+
+## Data and Mutability
+
+- Prefer immutable values when practical.
+- Avoid modifying objects unexpectedly.
+- Keep transformations explicit.
+
+## Dependencies
+
+- Prefer the standard library when it is sufficient.
+- Every new dependency must have a concrete justification.
+- Keep dependency usage isolated behind adapters when it represents infrastructure.
+
+## Code Quality
+
+- Do not duplicate business rules.
+- Do not add comments that merely restate the code.
+- Use comments/docstrings to explain intent, constraints, or non-obvious decisions.
+- Public interfaces should have clear documentation when their behavior is not obvious.

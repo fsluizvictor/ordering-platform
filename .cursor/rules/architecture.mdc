@@ -1,0 +1,138 @@
+---
+description: Architectural boundaries and service design rules
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+
+# Architecture Rules
+
+## Architecture Style
+
+The project follows Hexagonal Architecture.
+
+Maintain clear separation between:
+
+- Domain
+- Application
+- Adapters
+- Infrastructure
+
+Recommended dependency direction:
+
+```text
+Adapters → Application → Domain
+Infrastructure → Adapters/Application
+```
+
+The domain must not depend on HTTP frameworks, databases, RabbitMQ, Redis, or other infrastructure technologies.
+
+## Domain
+
+- Business rules belong in the domain/application layer.
+- Domain entities must not depend on Flask, SQLAlchemy, Pika, Redis clients, or HTTP clients.
+- Do not place business rules in controllers.
+- Do not place business rules in repositories.
+- Avoid anemic domain models when a rule naturally belongs to the domain.
+
+## Application
+
+Application services coordinate use cases.
+They may depend on domain ports/interfaces, but should not directly contain infrastructure implementations.
+
+## Adapters
+
+Adapters translate between the application/domain model and external technologies.
+
+Examples:
+
+- HTTP controllers
+- SQLAlchemy repositories
+- RabbitMQ consumers/producers
+- Redis clients
+- HTTP clients to other services
+
+## Service Boundaries
+
+Services must own their data.
+
+Rules:
+
+- Never access another service's database directly.
+- Never share database tables between services.
+- Communicate through APIs or messaging.
+- Do not share domain entities between services.
+- Shared code should be limited to truly generic infrastructure concerns.
+
+## Core API
+
+The Core API is the external HTTP entry point.
+
+It may handle:
+
+- routing
+- authentication/authorization
+- request validation
+- correlation/request IDs
+- logging
+- API versioning
+- contract translation
+- rate limiting when required
+
+It must not contain Customer, Product, or Order business rules.
+
+## Order Flow
+
+Order creation is asynchronous.
+
+The HTTP request must not synchronously perform the complete order processing.
+
+The expected flow is:
+
+```text
+Client
+  ↓
+Core API
+  ↓
+Order Service
+  ↓
+RabbitMQ
+  ↓
+Order Worker
+  ↓
+Order DB
+```
+
+## Redis
+
+Redis is a cache for Customer and Product.
+
+- PostgreSQL remains the source of truth.
+- Use Cache-Aside.
+- Do not treat Redis as permanent storage.
+- Do not introduce an Order cache without an explicit architectural decision.
+
+## RabbitMQ
+
+RabbitMQ is the messaging infrastructure for asynchronous Order processing.
+
+- Use manual ACK.
+- ACK only after successful processing.
+- Use bounded retry.
+- Use DLQ for messages that exceed retry limits.
+- Consumers must be safe against message redelivery.
+
+## Architectural Changes
+
+Do not replace a major technology or architectural pattern simply to simplify implementation.
+
+Examples requiring an explicit architectural decision:
+
+- replacing RabbitMQ;
+- removing the Core API;
+- changing asynchronous Order creation to synchronous processing;
+- changing PostgreSQL as the source of truth;
+- introducing a new cache;
+- introducing direct cross-service database access.
+
+Document significant changes in `docs/decisions.md`.
