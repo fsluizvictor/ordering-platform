@@ -137,6 +137,35 @@ services:
       retries: 5
       start_period: 15s
 
+  order-worker:
+    build:
+      context: .
+      dockerfile: order-worker/Dockerfile
+    environment:
+      SERVICE_NAME: order-worker
+      ORDER_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/order_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      REDIS_URL: redis://redis:6379/0
+      CUSTOMER_SERVICE_URL: http://customer-service:8001
+      PRODUCT_SERVICE_URL: http://product-service:8002
+      RABBITMQ_PREFETCH: "1"
+      ORDER_MAX_RETRIES: "${ORDER_MAX_RETRIES:-3}"
+      CACHE_TTL_SECONDS: "${CACHE_TTL_SECONDS:-300}"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    networks:
+      - ordering_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+
   core-api:
     build:
       context: .

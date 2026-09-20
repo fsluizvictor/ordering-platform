@@ -47,6 +47,12 @@ class SQLAlchemyOrderRepository(OrderRepository):
         model.status = order.status.value
         model.total_amount = order.total_amount
         model.updated_at = order.updated_at
+        # Sync item unit_prices set by the Worker at processing time.
+        item_map = {item.id: item for item in order.items}
+        for item_model in model.items:
+            domain_item = item_map.get(item_model.id)
+            if domain_item is not None:
+                item_model.unit_price = domain_item.unit_price
         self._session.flush()
         return order
 

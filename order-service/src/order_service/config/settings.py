@@ -20,6 +20,22 @@ def rabbitmq_url() -> str:
     return env("RABBITMQ_URL")
 
 
+def redis_url() -> str:
+    return env("REDIS_URL")
+
+
+def customer_service_url() -> str:
+    return env("CUSTOMER_SERVICE_URL")
+
+
+def product_service_url() -> str:
+    return env("PRODUCT_SERVICE_URL")
+
+
+def cache_ttl_seconds() -> int:
+    return env_int("CACHE_TTL_SECONDS", 300)
+
+
 def port() -> int:
     return env_int("PORT", 8003)
 
