@@ -493,10 +493,14 @@ with Swagger/OpenAPI documentation.
 
 ## Routes
 
+The Core API is the only public entry point. All public routes use the `/api/v1` prefix.
+Internal services expose resources at the root (no prefix).
+
 ```text
-/customers  → Customer Service
-/products   → Product Service
-/orders     → Order Service (wired in Phase 5)
+Public (Core API)              Internal service
+/api/v1/customers    →   http://customer-service:8001/customers
+/api/v1/products     →   http://product-service:8002/products
+/api/v1/orders       →   http://order-service:8003/orders  (wired in Phase 5)
 ```
 
 ## Error Response Format
@@ -591,15 +595,34 @@ OrderItem
 }
 ```
 
+## POST /orders — Processing Order
+
+The complete sequence for Order creation:
+
+```text
+1. Validate request payload.
+2. Generate external_id (UUID v4).
+3. Persist Order as PENDING in PostgreSQL (enables immediate GET).
+4. Publish OrderCreated to RabbitMQ.
+5. Return 202 Accepted.
+```
+
+Persisting before returning 202 ensures that `GET /orders/{external_id}` works
+immediately after creation, and gives the Worker an existing record to transition
+(it does not create the Order from scratch — it processes the existing PENDING).
+
+If RabbitMQ publish fails after the insert, the Order remains PENDING and can be
+recovered later. No Outbox Pattern at this stage.
+
 ## HTTP Endpoints
 
 ```http
-POST   /orders          → publish OrderCreated, return 202 Accepted
+POST   /orders          → persist PENDING + publish OrderCreated, return 202 Accepted
 GET    /orders          → list Orders (reads from Order DB)
 GET    /orders/{external_id}
 GET    /orders/count
-PUT    /orders/{external_id}
-DELETE /orders/{external_id}
+PUT    /orders/{external_id}   → allowed only when status is PENDING
+DELETE /orders/{external_id}   → allowed only when status is PENDING or FAILED
 ```
 
 ## Response for POST /orders
@@ -762,27 +785,49 @@ Cache is invalidated on Customer/Product update (in their respective services).
 
 ## Architecture
 
+Order Service and Order Worker share the **same Python package** (`order_service`),
+living in `order-service/src/`. They are separate processes with separate entrypoints:
+
+- **Order Service** → `python -m order_service.main` (HTTP server)
+- **Order Worker** → `python -m order_service.worker` (RabbitMQ consumer)
+
+The `order-worker/` directory contains **only Docker artifacts** (Dockerfile, entrypoint).
+It does not contain a separate Python package.
+
+This avoids duplicating Order domain entities and rules between two packages.
+
 ```text
-order-worker/
-├── src/order_worker/
-│   ├── domain/           (shared with order-service, or copied)
+order-service/
+├── src/order_service/
+│   ├── domain/
+│   │   ├── entities/
+│   │   ├── ports/
+│   │   └── exceptions/
 │   ├── application/
 │   │   └── services/
 │   ├── adapters/
 │   │   ├── inbound/
-│   │   │   └── messaging/  (RabbitMQ consumer)
+│   │   │   ├── http/          (Order Service HTTP routes)
+│   │   │   └── messaging/     (Order Worker RabbitMQ consumer)
 │   │   └── outbound/
 │   │       ├── persistence/
-│   │       ├── cache/       (Redis)
-│   │       └── external_services/ (HTTP clients)
+│   │       ├── messaging/     (publisher)
+│   │       ├── cache/         (Redis)
+│   │       └── external_services/ (HTTP clients to Customer/Product)
 │   ├── config/
-│   └── main.py
+│   ├── main.py                (HTTP entrypoint)
+│   └── worker.py              (Worker entrypoint)
 ├── tests/
 │   ├── unit/
 │   └── integration/
-├── Dockerfile
-└── pyproject.toml
+└── Dockerfile
+
+order-worker/
+└── Dockerfile                 (Docker only — same build context as order-service)
 ```
+
+> The Order Service and Order Worker share the same PostgreSQL Order database.
+> Order Service reads; Order Worker writes (transitions status, persists items).
 
 ## Tests
 
@@ -808,7 +853,8 @@ order-worker/
 
 ## Docker
 
-* [ ] Add `order-worker` to `docker-compose.yml`.
+* [ ] Add `order-worker` to `docker-compose.yml` using the same build context as `order-service`.
+* [ ] `order-worker` Dockerfile sets entrypoint to `python -m order_service.worker`.
 * [ ] Depends on `postgres`, `redis`, `rabbitmq` health checks.
 * [ ] Worker scaling must work: `docker compose up --scale order-worker=3`.
 

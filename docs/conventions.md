@@ -155,12 +155,13 @@ Códigos estáveis (usar estes; não criar sinônimos):
 | `PRODUCT_NOT_FOUND` | 404 |
 | `ORDER_NOT_FOUND` | 404 |
 | `EMAIL_ALREADY_EXISTS` | 409 |
-| `IDEMPOTENCY_CONFLICT` | 409 |
 | `DUPLICATE_EXTERNAL_ID` | 409 |
 | `INSUFFICIENT_STOCK` | 422 |
 | `BUSINESS_RULE_VIOLATION` | 422 |
-| `IDEMPOTENCY_KEY_REQUIRED` | 400 |
 | `INTERNAL_ERROR` | 500 |
+
+> **Futuro:** `IDEMPOTENCY_CONFLICT` (409) e `IDEMPOTENCY_KEY_REQUIRED` (400) serão adicionados
+> quando o header `Idempotency-Key` for implementado (ver `docs/decisions.md` — ADR-007).
 
 Não expor stack trace nem SQL.
 
@@ -176,24 +177,19 @@ Após escrita bem-sucedida no PostgreSQL, invalidar cache Redis (Cache-Aside). O
 
 ## Order — criação
 
-1. Core API valida contrato e exige header `Idempotency-Key`.
-2. Order Service tenta gravar a chave no Redis: `SET idempotency:{key} NX EX {TTL}`.
-3. Se a chave já existir, devolver o mesmo `external_id` e `status` já associados (replay), HTTP 202.
-4. Gerar `external_id`.
-5. **Persistir Order `PENDING` no PostgreSQL antes do 202** (permite `GET` imediato).
-6. Publicar `OrderCreated`.
-7. Responder `202 Accepted`.
+1. Core API valida o contrato da requisição.
+2. Order Service gera `external_id`.
+3. **Persistir Order `PENDING` no PostgreSQL antes do 202** (permite `GET` imediato).
+4. Publicar `OrderCreated`.
+5. Responder `202 Accepted`.
 
 O Worker **não** cria o pedido do zero. Ele processa o `PENDING` existente (validações, preços, total, transição de status).
 
-Se a publicação no RabbitMQ falhar depois do insert, a Order permanece `PENDING` e deve ser recuperável (fora do esqueleto inicial; não usar Outbox).
+Se a publicação no RabbitMQ falhar depois do insert, a Order permanece `PENDING` e deve ser recuperável (fora do escopo inicial; não usar Outbox).
 
-### Idempotency-Key
-
-- Obrigatória em `POST /orders`
-- Valor associado: `external_id`
-- TTL configurável (`IDEMPOTENCY_TTL_SECONDS`, default 86400)
-- `UNIQUE(external_id)` no banco é a garantia final
+> **Idempotency-Key deferido.** O header `Idempotency-Key` e a proteção Redis `NX + TTL`
+> estão planejados como trabalho futuro. A proteção atual contra duplicatas é
+> `UNIQUE(external_id)` no PostgreSQL. Consultar `docs/decisions.md` — ADR-007.
 
 ### PUT /orders/{external_id}
 
@@ -226,9 +222,10 @@ Não é fonte de verdade. Sem cache de Order.
 |---|---|
 | `customer:{id}` | Cache-Aside de Customer |
 | `product:{id}` | Cache-Aside de Product |
-| `idempotency:{key}` | Janela de idempotência HTTP |
 
 TTL de cache: `CACHE_TTL_SECONDS` (default 300).
+
+> **Futuro:** `idempotency:{key}` para janela de idempotência HTTP (ver `docs/decisions.md`).
 
 ---
 
@@ -281,16 +278,16 @@ Nunca logar senhas, URLs com credencial, `Idempotency-Key` completo (truncar se 
 
 Uma sequência só (substitui qualquer lista divergente):
 
-1. Skeleton / Docker / tooling (esta fase)
-2. Customer Service
-3. Product Service
-4. Core API (proxy + OpenAPI preenchido)
-5. Order Service HTTP + publicação
-6. Order Worker + Redis Cache-Aside
-7. Idempotência completa
-8. Retry / DLQ
-9. Testes de integração do fluxo
-10. Observabilidade e README final
+1. Preparation / skeleton / tooling
+2. Docker Infrastructure (apenas infra: postgres, redis, rabbitmq)
+3. Customer Service
+4. Product Service
+5. Core API (proxy + OpenAPI)
+6. Order Service (HTTP + publicação)
+7. Order Worker (consumo + Cache-Aside + Retry/DLQ mínimo)
+8. Observabilidade essencial (logging JSON + correlation ID)
+9. Testes E2E (happy path completo)
+10. Hardening e documentação final
 
 ---
 

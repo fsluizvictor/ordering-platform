@@ -82,13 +82,23 @@ A persistência ocorre primeiro no PostgreSQL e, após sucesso, o cache é inval
 
 ## ADR-007 — Idempotência
 
-### Decisão
+### Decisão atual
 
-Usar `Idempotency-Key` para criação de pedidos e `UNIQUE(external_id)` no banco.
+Usar `UNIQUE(external_id)` no banco de dados como proteção contra duplicatas de Order.
+O banco rejeita qualquer tentativa de persistir dois pedidos com o mesmo `external_id`.
 
 ### Motivo
 
-Proteger tanto contra requisições HTTP duplicadas quanto contra redelivery de mensagens.
+Suficiente para garantir integridade dos dados nesta fase sem adicionar complexidade ao
+Order Service (nova port, adapter Redis, middleware HTTP).
+
+### Decisão futura (deferida)
+
+Adicionar `Idempotency-Key` header e proteção Redis `SET NX EX <TTL>` como camada
+anterior ao processamento, evitando que mensagens duplicadas cheguem ao Worker.
+
+Chave Redis: `idempotency:{idempotency_key}` com TTL `IDEMPOTENCY_TTL_SECONDS` (default 86400).
+Implementar quando explicitamente solicitado. Atualizar este ADR ao implementar.
 
 ---
 
