@@ -125,3 +125,39 @@ O ambiente local será executado com Docker Compose.
 ### Motivo
 
 Facilitar inicialização, integração entre componentes e reprodução do ambiente.
+
+---
+
+## ADR-011 — Order PENDING persistido no HTTP
+
+### Decisão
+
+`POST /orders` grava a Order como `PENDING` no PostgreSQL antes de retornar `202`.
+
+### Motivo
+
+Permitir `GET /orders/{external_id}` imediatamente e dar ao Worker um registro para transicionar, em vez de criar o pedido só no consumo.
+
+---
+
+## ADR-012 — Order Worker reutiliza o código do Order Service
+
+### Decisão
+
+Order Service e Order Worker são processos distintos e o mesmo contexto de domínio. O código vive em `order-service/`; o Worker usa a mesma imagem com outro entrypoint.
+
+### Motivo
+
+Evitar duplicar entidades e regras de Order entre dois diretórios.
+
+---
+
+## ADR-013 — Um PostgreSQL, três databases
+
+### Decisão
+
+O Compose sobe um container PostgreSQL com `customer_db`, `product_db` e `order_db`.
+
+### Motivo
+
+Separação lógica de ownership sem três instâncias no desafio. Continua proibido acessar o database de outro serviço.

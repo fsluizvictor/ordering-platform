@@ -2,10 +2,12 @@
 
 ## Pré-requisitos
 
-- Python 3.x
+- Python 3.12
 - Docker
 - Docker Compose
 - Git
+
+Convenções táticas (filas, erros, health, Order PENDING): `docs/conventions.md`.
 
 ## Inicialização
 
@@ -51,13 +53,16 @@ pytest
 
 ## Qualidade
 
-Antes de abrir um PR/commit relevante:
+Na raiz:
 
 ```bash
-pytest
+make lint
+make format
+make typecheck
+make test
 ```
 
-Ferramentas de lint/format devem ser centralizadas no `pyproject.toml`.
+Ferramentas de lint/format estão no `pyproject.toml`.
 
 ## Variáveis de ambiente
 
@@ -85,16 +90,15 @@ O contrato deve permanecer sincronizado com as implementações.
 
 ## Fluxo recomendado de implementação
 
-1. Criar infraestrutura Docker.
-2. Criar Customer Service.
-3. Criar Product Service.
-4. Criar Redis e Cache-Aside.
-5. Criar Order Service.
-6. Criar RabbitMQ.
-7. Criar Order Worker.
-8. Implementar idempotência.
-9. Implementar retry/DLQ.
-10. Criar Core API.
-11. Integrar Swagger.
-12. Criar testes de integração.
-13. Validar fluxo completo.
+Seguir `docs/conventions.md`:
+
+1. Skeleton / Docker / tooling
+2. Customer Service
+3. Product Service
+4. Core API (proxy + OpenAPI)
+5. Order Service HTTP + publicação
+6. Order Worker + Redis Cache-Aside
+7. Idempotência
+8. Retry / DLQ
+9. Testes de integração
+10. Observabilidade e documentação

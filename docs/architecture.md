@@ -65,7 +65,7 @@ Responsável exclusivamente pelo domínio de produtos e seu armazenamento.
 
 Responsável pelo contrato HTTP de pedidos e pela publicação do evento `OrderCreated`.
 
-A criação é assíncrona. O serviço gera o `external_id`, publica o evento e retorna `202 Accepted`.
+A criação é assíncrona. O serviço gera o `external_id`, persiste a Order como `PENDING`, publica `OrderCreated` e retorna `202 Accepted`. O Worker processa o registro existente. Detalhes em `docs/conventions.md`.
 
 ### Order Worker
 
@@ -135,6 +135,7 @@ Core API
 Order Service
   │
   ├── gera external_id
+  ├── persiste PENDING
   ├── publica OrderCreated
   └── retorna 202
              │

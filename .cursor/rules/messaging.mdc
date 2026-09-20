@@ -1,0 +1,57 @@
+---
+description: RabbitMQ, ACK, retry and DLQ rules
+globs:
+  - "**/*rabbit*"
+  - "**/*pika*"
+  - "**/*worker*"
+  - "**/adapters/**/messaging/**/*.py"
+  - "**/adapters/inbound/messaging/**/*.py"
+alwaysApply: false
+---
+
+# Messaging Rules
+
+## Broker
+
+Use RabbitMQ and Pika. Do not introduce another broker or a task framework.
+
+## Topology
+
+Use the names in `docs/conventions.md`:
+
+- exchange `orders`
+- routing key `order.created`
+- queue `orders.created`
+- dead-letter exchange `orders.dlx`
+- dead-letter queue `orders.created.dlq`
+
+All Order Worker instances consume the same queue.
+
+## ACK
+
+Use manual ACK.
+
+ACK only after:
+
+1. Customer validation
+2. Product validation
+3. business validation
+4. persistence
+5. successful commit
+
+If the process dies before ACK, redelivery is expected. Processing must be idempotent.
+
+## Retry and DLQ
+
+Use bounded retries from configuration. Never requeue without a limit.
+
+After the retry limit, publish/send to the DLQ. Do not drop the message silently.
+
+## Prefetch
+
+Use a limited prefetch (`RABBITMQ_PREFETCH`). Default is 1 unless configuration says otherwise.
+
+## Payload
+
+`OrderCreated` must include `event_id`, `external_id`, `customer_id`, and `items`.
+Propagate `correlation_id` when present.

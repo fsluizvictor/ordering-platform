@@ -1,5 +1,7 @@
 # Requisitos
 
+Os identificadores RF01–RF20 abaixo são os da API (CRUD). O documento-fonte (`arquitetura_requisitos_projeto.md` seção 15) usa outra numeração para o mesmo escopo (fluxo, cache, DLQ). Para implementação, este arquivo + `docs/conventions.md` são a referência.
+
 ## Requisitos funcionais
 
 ### Clientes

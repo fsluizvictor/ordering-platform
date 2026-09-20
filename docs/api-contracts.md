@@ -138,11 +138,11 @@ Retorna quantidade de pedidos.
 
 ### PUT /orders/{external_id}
 
-Atualiza pedido de acordo com as regras de negócio.
+Permitido somente com status `PENDING`. Não altera `external_id` nem `customer_id`.
 
 ### DELETE /orders/{external_id}
 
-Remove pedido de acordo com as regras de negócio.
+Permitido em `PENDING` ou `FAILED`. `PROCESSING` e `COMPLETED` retornam 409.
 
 ## Evento OrderCreated
 
@@ -153,6 +153,7 @@ Exemplo conceitual:
   "event_id": "uuid",
   "event_type": "OrderCreated",
   "occurred_at": "2026-01-01T12:00:00Z",
+  "correlation_id": "uuid",
   "external_id": "uuid",
   "customer_id": "uuid",
   "items": [

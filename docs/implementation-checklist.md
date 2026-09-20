@@ -2,12 +2,12 @@
 
 ## Infraestrutura
 
-- [ ] Docker Compose
-- [ ] PostgreSQL
-- [ ] Redis
-- [ ] RabbitMQ
-- [ ] Variáveis de ambiente
-- [ ] Health checks
+- [x] Docker Compose (esqueleto)
+- [x] PostgreSQL (container + databases)
+- [x] Redis
+- [x] RabbitMQ
+- [x] Variáveis de ambiente (`.env.example`)
+- [x] Health checks (liveness HTTP; worker AMQP)
 
 ## Customer
 
@@ -72,8 +72,8 @@
 - [ ] Proxy/HTTP clients
 - [ ] Correlation ID
 - [ ] Tratamento de erros
-- [ ] Swagger/OpenAPI
-- [ ] Health check
+- [x] Swagger/OpenAPI (esqueleto `openapi.yaml`)
+- [x] Health check
 - [ ] Testes
 
 ## Finalização

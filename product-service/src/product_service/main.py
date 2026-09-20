@@ -1,0 +1,16 @@
+from __future__ import annotations
+
+from product_service.adapters.inbound.http.app import create_app
+from product_service.config.settings import SERVICE_NAME, log_level, port
+from shared.logging_setup import setup_logging
+
+setup_logging(SERVICE_NAME, log_level())
+app = create_app()
+
+
+def main() -> None:
+    app.run(host="0.0.0.0", port=port(), debug=False)
+
+
+if __name__ == "__main__":
+    main()

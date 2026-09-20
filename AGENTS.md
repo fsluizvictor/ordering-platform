@@ -48,10 +48,10 @@ Do not introduce Kubernetes, Kafka, Celery, MongoDB, Elasticsearch, GraphQL, Eve
 
 Use Hexagonal Architecture.
 
-Expected structure:
+Expected structure (Python package named per service to avoid `domain` collisions in the monorepo):
 
 ```text
-src/
+src/<service_package>/
 ├── domain/
 │   ├── entities/
 │   └── ports/
@@ -63,6 +63,8 @@ src/
 ├── config/
 └── main.py
 ```
+
+Tactical names, ports, error codes, and Order HTTP/Worker sharing: `docs/conventions.md`.
 
 Dependency direction:
 
@@ -315,6 +317,9 @@ Example:
 ```json
 {
   "event_id": "uuid",
+  "event_type": "OrderCreated",
+  "occurred_at": "2026-01-01T12:00:00Z",
+  "correlation_id": "uuid",
   "external_id": "uuid",
   "customer_id": "uuid",
   "items": [
@@ -596,24 +601,18 @@ When uncertain, keep code inside the owning service.
 
 ## 22. Development Order
 
-Implement incrementally:
+Implement incrementally (canonical list in `docs/conventions.md`):
 
-1. repository/service structure
-2. Docker Compose
-3. PostgreSQL
-4. Customer Service
-5. Product Service
-6. Core API
-7. Order Service
-8. RabbitMQ
-9. Order Worker
-10. Redis Cache-Aside
-11. Idempotency
-12. Retry/DLQ
-13. Swagger/OpenAPI
-14. tests
-15. observability
-16. documentation
+1. Skeleton / Docker / tooling
+2. Customer Service
+3. Product Service
+4. Core API (proxy + OpenAPI)
+5. Order Service HTTP + publication
+6. Order Worker + Redis Cache-Aside
+7. Idempotency
+8. Retry / DLQ
+9. Integration tests
+10. Observability and documentation
 
 Each phase should leave the project runnable.
 
@@ -623,7 +622,7 @@ Before changing code:
 1. Inspect the repository.
 2. Understand the affected service.
 3. Identify the architectural layer.
-4. Read relevant files under `docs/`.
+4. Read `docs/conventions.md` and relevant files under `docs/`.
 5. Check existing tests.
 6. Reuse existing abstractions when appropriate.
 7. Avoid unrelated changes.

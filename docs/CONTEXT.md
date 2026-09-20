@@ -8,6 +8,8 @@ O sistema deve permitir operações CRUD para clientes, produtos e pedidos, alé
 
 ## Escopo arquitetural
 
+Convenções táticas (obrigatório para implementação): `docs/conventions.md`.
+
 A solução é composta por:
 
 - Core API
