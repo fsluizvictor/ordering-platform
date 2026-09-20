@@ -29,7 +29,7 @@ class RedisProductCache(ProductLookupPort):
 
     def __init__(
         self,
-        redis_client: redis.Redis,  # type: ignore[type-arg]
+        redis_client: redis.Redis,
         http_client: ProductServiceClient,
         ttl_seconds: int,
     ) -> None:
