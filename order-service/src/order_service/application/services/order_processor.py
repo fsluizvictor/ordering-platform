@@ -32,9 +32,9 @@ class _CorrelationFilter(logging.Filter):
         self.correlation_id = correlation_id
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.external_id = self.external_id  # type: ignore[attr-defined]
+        record.external_id = self.external_id  # noqa: PLE0237 — dynamically injected for log formatting
         if self.correlation_id:
-            record.correlation_id = self.correlation_id  # type: ignore[attr-defined]
+            record.correlation_id = self.correlation_id  # noqa: PLE0237 — dynamically injected for log formatting
         return True
 
 
@@ -75,8 +75,10 @@ class OrderProcessor:
 
             # Idempotency: already processed by a previous Worker run.
             if order.status in (OrderStatus.COMPLETED, OrderStatus.FAILED):
-                logger.info("Order already in terminal state, skipping (idempotent)",
-                           extra={"status": order.status.value})
+                logger.info(
+                    "Order already in terminal state, skipping (idempotent)",
+                    extra={"status": order.status.value},
+                )
                 return
 
             # Transition to PROCESSING (idempotent if already PROCESSING from a
@@ -98,17 +100,21 @@ class OrderProcessor:
             for item in order.items:
                 product = self._product_lookup.get_product(item.product_id)
                 if product is None:
-                    logger.warning("Product not found, failing order",
-                                 extra={"product_id": str(item.product_id)})
+                    logger.warning(
+                        "Product not found, failing order",
+                        extra={"product_id": str(item.product_id)},
+                    )
                     self._fail_order(order)
                     return
                 if item.quantity > product.stock:
-                    logger.warning("Insufficient stock, failing order",
-                                 extra={
-                                     "product_id": str(item.product_id),
-                                     "requested": item.quantity,
-                                     "available": product.stock,
-                                 })
+                    logger.warning(
+                        "Insufficient stock, failing order",
+                        extra={
+                            "product_id": str(item.product_id),
+                            "requested": item.quantity,
+                            "available": product.stock,
+                        },
+                    )
                     self._fail_order(order)
                     return
                 item_prices[item.product_id] = product.price
@@ -124,8 +130,9 @@ class OrderProcessor:
             order.transition_to(OrderStatus.COMPLETED)
             self._repo.update(order)
 
-            logger.info("Order processed successfully",
-                       extra={"total_amount": str(order.total_amount)})
+            logger.info(
+                "Order processed successfully", extra={"total_amount": str(order.total_amount)}
+            )
         finally:
             logger.removeFilter(log_filter)
 

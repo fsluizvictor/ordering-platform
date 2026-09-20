@@ -56,6 +56,9 @@ explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
+# Exclude test directories — they share the name "tests" across services and would
+# cause "Duplicate module" errors when mypy resolves packages from the filesystem root.
+exclude = ["/tests/"]
 files = [
     "shared",
     "core-api/src",
@@ -79,7 +82,9 @@ pythonpath = [
     "product-service/src",
     "order-service/src",
 ]
-addopts = "-q"
+# importlib mode avoids "duplicate module" errors when multiple services
+# each have their own tests/ directory in a monorepo layout.
+addopts = "-q --import-mode=importlib"
 markers = [
     "e2e: end-to-end tests that require the full Docker Compose environment running",
 ]

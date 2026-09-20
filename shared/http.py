@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 
@@ -8,6 +9,8 @@ from sqlalchemy import create_engine, text
 
 from shared.correlation import init_correlation
 from shared.errors import error_response
+
+logger = logging.getLogger(__name__)
 
 ReadyCheck = Callable[[], tuple[bool, str]]
 
@@ -18,7 +21,8 @@ def check_postgres(database_url: str) -> tuple[bool, str]:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
         return True, "ok"
-    except Exception:
+    except Exception:  # noqa: BLE001
+        logger.debug("PostgreSQL readiness check failed", exc_info=True)
         return False, "unavailable"
 
 
@@ -27,7 +31,11 @@ def create_service_app(
     *,
     ready_checks: dict[str, ReadyCheck] | None = None,
 ) -> Flask:
-    app = Flask(service_name)
+    # Use the shared module as Flask's import_name so Flask can always resolve
+    # its root path.  Service names like "product-service" contain hyphens and
+    # are not valid Python identifiers, which causes Flask 3.x to raise
+    # RuntimeError when it cannot import the name to find the root path.
+    app = Flask(__name__)
     app.config["SERVICE_NAME"] = service_name
     init_correlation(app)
     checks = ready_checks or {}
