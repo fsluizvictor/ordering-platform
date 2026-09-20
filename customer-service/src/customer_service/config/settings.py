@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from shared.env import env, env_int, log_level as env_log_level, service_name
+from shared.env import env, env_int, service_name
+from shared.env import log_level as env_log_level
 
 SERVICE_NAME = service_name("customer-service")
 

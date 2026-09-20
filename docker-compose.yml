@@ -50,6 +50,34 @@ services:
       timeout: 5s
       retries: 5
 
+  customer-service:
+    build:
+      context: .
+      dockerfile: customer-service/Dockerfile
+    container_name: customer-service
+    environment:
+      SERVICE_NAME: customer-service
+      CUSTOMER_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/customer_db
+      PORT: "8001"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8001:8001"
+    networks:
+      - ordering_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/ready')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   postgres_data:
   redis_data:
