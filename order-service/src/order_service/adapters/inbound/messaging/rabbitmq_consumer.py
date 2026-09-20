@@ -25,10 +25,12 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 
 import pika
 import pika.exceptions
 
+from order_service.application.services.order_processor import OrderProcessor
 from order_service.config.settings import (
     EXCHANGE_DLX,
     EXCHANGE_ORDERS,
@@ -102,7 +104,7 @@ class RabbitMQConsumer:
         body: bytes,
     ) -> None:
         headers: dict[str, object] = dict(properties.headers or {})
-        retry_count = int(headers.get(_RETRY_HEADER, 0))
+        retry_count = int(str(headers.get(_RETRY_HEADER, 0)))
         correlation_id = properties.correlation_id or ""
         event_id = properties.message_id or ""
 
@@ -213,7 +215,7 @@ class RabbitMQConsumer:
 # ── Type alias for readability ────────────────────────────────────────────────
 
 # A factory callable that returns an OrderProcessor bound to a fresh DB session.
-ProcessorFactory = "type[OrderProcessor]"  # used only for type comments
+ProcessorFactory = Callable[[], OrderProcessor]
 
 
 # ── Topology ─────────────────────────────────────────────────────────────────

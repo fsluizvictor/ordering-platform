@@ -121,6 +121,7 @@ def create_order() -> tuple:
     except InvalidOrderError as exc:
         return error_response("VALIDATION_ERROR", str(exc), 422)
     except Exception:
+        logger.exception("Unexpected error creating order")
         return error_response("INTERNAL_ERROR", "Failed to create order", 500)
 
 

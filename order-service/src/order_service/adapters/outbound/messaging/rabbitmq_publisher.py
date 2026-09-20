@@ -80,8 +80,10 @@ class RabbitMQOrderPublisher(OrderPublisher):
         finally:
             try:
                 connection.close()
-            except Exception:
-                pass
+            except Exception:  # noqa: BLE001
+                # Best-effort cleanup; ignore errors so the caller always sees
+                # the publish outcome rather than a close-side error.
+                logger.debug("Failed to close RabbitMQ connection after publish", exc_info=True)
 
 
 def _declare_topology(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:

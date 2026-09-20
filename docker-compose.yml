@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres
+    restart: on-failure
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ordering}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ordering}
@@ -21,6 +22,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    restart: on-failure
     ports:
       - "6379:6379"
     volumes:
@@ -36,6 +38,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
+    restart: on-failure
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -55,6 +58,7 @@ services:
       context: .
       dockerfile: customer-service/Dockerfile
     container_name: customer-service
+    restart: on-failure
     environment:
       SERVICE_NAME: customer-service
       CUSTOMER_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/customer_db
@@ -83,6 +87,7 @@ services:
       context: .
       dockerfile: product-service/Dockerfile
     container_name: product-service
+    restart: on-failure
     environment:
       SERVICE_NAME: product-service
       PRODUCT_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/product_db
@@ -111,6 +116,7 @@ services:
       context: .
       dockerfile: order-service/Dockerfile
     container_name: order-service
+    restart: on-failure
     environment:
       SERVICE_NAME: order-service
       ORDER_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/order_db
@@ -141,6 +147,7 @@ services:
     build:
       context: .
       dockerfile: order-worker/Dockerfile
+    restart: on-failure
     environment:
       SERVICE_NAME: order-worker
       ORDER_DATABASE_URL: postgresql://${POSTGRES_USER:-ordering}:${POSTGRES_PASSWORD:-ordering}@postgres:5432/order_db
@@ -171,6 +178,7 @@ services:
       context: .
       dockerfile: core-api/Dockerfile
     container_name: core-api
+    restart: on-failure
     environment:
       SERVICE_NAME: core-api
       CUSTOMER_SERVICE_URL: http://customer-service:8001

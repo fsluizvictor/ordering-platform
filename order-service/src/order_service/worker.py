@@ -63,7 +63,7 @@ def main() -> None:
         class _CommittingProcessor(OrderProcessor):
             """Wraps OrderProcessor to commit (or rollback) the session after process()."""
 
-            def process(self, payload: dict[str, object]) -> None:  # type: ignore[override]
+            def process(self, payload: dict[str, object]) -> None:
                 try:
                     super().process(payload)
                     session.commit()
